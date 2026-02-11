@@ -57,15 +57,30 @@ class AgentGraph:
         self.graph.connect(reason_node, output_node)
 
     def _fetch(self, input_):
-        """MCP から状態とレコードを取得する"""
-        state = self.mcp.fetch_state()
-        records = self.mcp.fetch_records(limit=10)
+        """MCP から状態とレコードを取得する。クライアントがフォールバック（mock）を返す場合に備えて正規化する。"""
+        state_resp = self.mcp.fetch_state()
+        records_resp = self.mcp.fetch_records(limit=10)
+        # Unwrap defensive client responses which may include wrappers like {"_mock": True, "state": {...}}
+        if isinstance(state_resp, dict) and 'state' in state_resp:
+            state = state_resp.get('state', {})
+        else:
+            state = state_resp if isinstance(state_resp, dict) else {}
+        if isinstance(records_resp, dict) and 'records' in records_resp:
+            records = records_resp.get('records', [])
+        else:
+            # If it's already a list, keep it; if it's a dict fallback to empty list
+            records = records_resp if isinstance(records_resp, list) else []
         return {"state": state, "records": records}
 
     def _summarize(self, data):
-        """取得データを要約する"""
-        state = data.get('state', {})
-        records = data.get('records', [])
+        """取得データを要約する（入力が想定外でも安全に処理する）"""
+        state = data.get('state', {}) or {}
+        records = data.get('records', []) or []
+        # Ensure types
+        if not isinstance(state, dict):
+            state = {}
+        if not isinstance(records, list):
+            records = []
         s = summarize_state(state)
         events = extract_recent_events(records)
         return {"summary": s, "events": events}
