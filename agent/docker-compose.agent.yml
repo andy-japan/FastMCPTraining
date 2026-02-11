@@ -1,0 +1,9 @@
+version: '3'
+services:
+  mcp-agent:
+    build: ./agent
+    image: fastmcpagent:latest
+    environment:
+      - MCP_URL=http://mcp_server:8000
+    depends_on:
+      - mcp_server
