@@ -6,13 +6,21 @@ import os
 from client import McpClient
 from langgraph_flow import AgentGraph
 
-# Placeholder LLM wrapper
+# LLM wrapper: use langchain/OpenAI-compatible endpoint if configured
+from llm import make_llm
+
 class SimpleLLM:
-    def __init__(self):
-        pass
+    def __init__(self, model: str = "gpt-4o-mini", temperature: float = 0.0):
+        try:
+            self._impl = make_llm(model=model, temperature=temperature)
+        except Exception:
+            # Fallback to a trivial mock if external LLM is not available
+            self._impl = None
+
     def generate(self, prompt: str) -> str:
-        # In real use, replace with OpenAI/Local LLM call
-        return "[LLM simulated response] Short assessment based on prompt length: " + str(len(prompt))
+        if self._impl is None:
+            return "[LLM simulated response] Short assessment based on prompt length: " + str(len(prompt))
+        return self._impl.generate(prompt)
 
 
 def run_once(mcp_url: str):
